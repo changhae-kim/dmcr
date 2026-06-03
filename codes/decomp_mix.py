@@ -9,11 +9,11 @@ import torch.optim as optim
 from larch.io.columnfile import read_ascii, write_ascii
 from scipy.interpolate import interp1d
 
-from spec_decomp import SpectralDecomposition, MultipleSpectraDecomposition
+from mcr import *
 
 ##################################################
 
-dirname = 'CuGaXAS/Nt3Ds1Ns357norm'
+dirname = '../data'
 
 param_dicts = [
         {'expt': '4_Cu2O+Ga2O3_redox', 'edge': 'Cu-K', 'n_spec': 64, 'index': 2, },
@@ -269,27 +269,9 @@ species_dict = {
             ],
         }
 
-def temporal_smoothness(C, ST, D):
-    w = 0.001
-    i = 63
-    dC = C[1:,:] - C[:-1,:]
-    dC[i,:] = 0.0
-    loss = w * torch.mean(dC ** 2)
-    return loss
-
-def spectral_smoothness_Cu(C, ST, D):
-    W = [0.01, 0.01, 0.01]
-    loss = 0.0
-    for w, st in zip(W, ST):
-        loss += w * torch.nn.functional.mse_loss(st[1:], st[:-1])
-    return loss
-
-def spectral_smoothness_Ga(C, ST, D):
-    W = [0.01, 0.01]
-    loss = 0.0
-    for w, st in zip(W, ST):
-        loss += w * torch.nn.functional.mse_loss(st[1:], st[:-1])
-    return loss
+temporal_smoothness = TemporalSmoothnessLoss(0.001, [63])
+spectral_smoothness_Cu = SpectralSmoothnessLoss([0.01, 0.01, 0.01])
+spectral_smoothness_Ga = SpectralSmoothnessLoss([0.01, 0.01])
 
 constraints_dict = {
         'Cu-K': [
@@ -320,18 +302,18 @@ for edge in spec_dict.keys():
     n_energies = specs.shape[1]
     n_species = len(species)
 
-    D = np.array(specs)
+    D = torch.tensor(specs)
 
-    model = SpectralDecomposition(
-            n_timesteps, n_energies, n_species,
-            C_guess=C_guess, ST_guess=ST_guess,
+    model = DifferentiableMCR(
+            n_timesteps, n_species, n_energies,
+            C_guess=torch.tensor(C_guess), ST_guess=torch.tensor(ST_guess),
             C_min=0.001, ST_min=0.001,
             )
 
     optimizer = optim.LBFGS(model.parameters(), history_size=10000)
     scheduler = None
-    model.train(D, optimizer, scheduler, constraints,
-                max_epoches=10000, verbose=10, gtol=1e-7, xtol=1e-2)
+    model.fit(D, optimizer, scheduler, constraints=constraints,
+              max_epochs=10000, verbose=10, gtol=1e-7, xtol=1e-2)
 
     C_opt = model.concentrations().detach().numpy()
     ST_opt = model.spectra().detach().numpy()

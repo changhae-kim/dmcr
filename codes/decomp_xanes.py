@@ -9,11 +9,11 @@ import torch.optim as optim
 from larch.io.columnfile import read_ascii, write_ascii
 from scipy.interpolate import interp1d
 
-from spec_decomp import SpectralDecomposition, MultipleSpectraDecomposition
+from mcr import *
 
 ##################################################
 
-dirname = 'CuGaXAS/Nt3Ds1Ns357norm'
+dirname = '../data'
 
 param_dicts = [
         {'expt': '2_CuGaO2_redox', 'edge': 'Cu-K', 'n_spec': 65, 'index': 0, },
@@ -223,7 +223,6 @@ for edge in spec_dict.keys():
 ##################################################
 
 C0 = 0.30
-##C0 = 0.40
 
 CT = np.zeros((4, 151))
 CT[0,    :   ] = 1.0 - C0
@@ -257,25 +256,18 @@ Ga = np.full_like(GaT.T, np.nan)
 Ga[reselector] = GaT.T[reselector]
 
 C_guess_dict = {
-        ##'Cu-K': Cu,
-        ##'Ga-K': Ga,
         'Cu-K': C,
         'Ga-K': C,
         }
 
 ST_guess_dict = {
         'Cu-K': np.array([
-            ##spec_dict['Cu-K'][reselector][0],
-            ##spec_dict['Cu-K'][reselector][13],
-            ##spec_dict['Cu-K'][reselector][53],
             spec_dict['Cu-K'][reselector][0],
             spec_dict['Cu-K'][reselector][0],
             spec_dict['Cu-K'][reselector][13],
             spec_dict['Cu-K'][reselector][53],
             ]),
         'Ga-K': np.array([
-            ##spec_dict['Ga-K'][reselector][0],
-            ##spec_dict['Ga-K'][reselector][13],
             spec_dict['Ga-K'][reselector][0],
             spec_dict['Ga-K'][reselector][0],
             spec_dict['Ga-K'][reselector][13],
@@ -288,17 +280,12 @@ ST_opt_dict = {}
 
 species_dict = {
         'Cu-K': [
-            ##r'Cu$^{+}$ (CuGaO$_2$)',
-            ##r'Cu$^{\delta+}$ (CuGaO$_{2-x}$)',
-            ##r'Cu$^{(1+\epsilon)+}$ (CuGaO$_{2+y}$)',
             r'Cu$^{+}$ (Bulk)',
             r'Cu$^{+}$ (Surface)',
             r'Cu$^{\delta+}$ (CuGaO$_{2-x}$)',
             r'Cu$^{(1+\epsilon)+}$ (CuGaO$_{2+y}$)',
             ],
         'Ga-K': [
-            ##r'Ga$^{3+}$ (CuGaO$_2$)',
-            ##r'Ga$^{3+}$ (CuGaO$_{2\pm{z}}$)',
             r'Ga$^{3+}$ (Bulk)',
             r'Ga$^{3+}$ (Surface)',
             r'Ga$^{3+}$ (CuGaO$_{2-x}$)',
@@ -306,80 +293,23 @@ species_dict = {
             ],
         }
 
-def dominant_species(C, ST, D):
-    w = 1.0
-    i = 0
-    c0 = 1.0 - C0
-    dC = C[:,i] - c0
-    loss = w * torch.mean(dC ** 2)
-    return loss
-
-def temporal_smoothness(C, ST, D):
-    w = 0.001
-    i = 62
-    dC = C[1:,:] - C[:-1,:]
-    dC[i,:] = 0.0
-    loss = w * torch.mean(dC ** 2)
-    return loss
-
-def spectral_smoothness_Cu(C, ST, D):
-    ##W = [0.2, 0.01, 0.01]
-    ##W = [0.1, 0.01, 0.01]
-    ##W = [0.05, 0.01, 0.01]
-    ##W = [0.165, 0.1, 0.01, 0.01]
-    ##W = [0.09, 0.05, 0.01, 0.01]
-    ##W = [0.14, 0.05, 0.01, 0.01]
-    W = [0.09, 0.02, 0.01, 0.01]
-    ##W = [0.1, 0.01, 0.01, 0.01]
-    loss = 0.0
-    for w, st in zip(W, ST):
-        loss += w * torch.nn.functional.mse_loss(st[1:], st[:-1])
-    return loss
-
-def spectral_smoothness_Ga(C, ST, D):
-    ##W = [0.3, 0.01]
-    ##W = [0.2, 0.01]
-    ##W = [0.1, 0.01]
-    ##W = [0.19, 0.1, 0.01, 0.01]
-    W = [0.31, 0.1, 0.01, 0.01]
-    loss = 0.0
-    for w, st in zip(W, ST):
-        loss += w * torch.nn.functional.mse_loss(st[1:], st[:-1])
-    return loss
-
-def kendall_rank(C, ST, D):
-    w = 0.001
-    n_timesteps, n_species = C.size()
-    C_ref = torch.tensor(C_opt_dict['Cu-K'][reselector], requires_grad=False)
-    pred = C[:,None,:] - C[None,:,:]
-    target = torch.sign(C_ref[:,None,:] - C_ref[None,:,:])
-    product = pred * target
-    same_sign = (product > 0.0)
-    opp_sign = (product < 0.0)
-    indices = torch.arange(n_species)
-    for i in range(n_species):
-        selector = (indices == i)
-        n_same = max(torch.numel(product[same_sign & selector]), 1)
-        n_opp = max(torch.numel(product[opp_sign & selector]), 1)
-        product[same_sign & selector] *= n_opp / max(n_same, n_opp)
-    loss = w * (- torch.sum(product) / ((n_timesteps ** 2 - n_timesteps) * n_species))
-    return loss
+dominant_species = AnchorLoss(1.0, 0, 1.0 - C0)
+temporal_smoothness = TemporalSmoothnessLoss(0.001, [62])
+spectral_smoothness_Cu = SpectralSmoothnessLoss([0.09, 0.02, 0.01, 0.01])
+spectral_smoothness_Ga = SpectralSmoothnessLoss([0.31, 0.10, 0.01, 0.01])
+#kenrall_rank = KendallRankCorrCoeff(0.001, torch.tensor(C_opt_dict['Cu-K'][reselector]))
 
 constraints_dict = {
         'Cu-K': [
-            ##temporal_smoothness,
-            ##spectral_smoothness_Cu,
             dominant_species,
             temporal_smoothness,
             spectral_smoothness_Cu,
             ],
         'Ga-K': [
-            ##temporal_smoothness,
-            ##spectral_smoothness_Ga,
             dominant_species,
             temporal_smoothness,
             spectral_smoothness_Ga,
-            kendall_rank,
+            #kendall_rank,
             ],
         }
 
@@ -400,18 +330,18 @@ for edge in spec_dict.keys():
     n_energies = specs[reselector].shape[1]
     n_species = len(species)
 
-    D = np.array(specs)
+    D = torch.tensor(specs)
 
-    model = SpectralDecomposition(
-            n_timesteps, n_energies, n_species,
-            C_guess=C_guess[reselector], ST_guess=ST_guess,
+    model = DifferentiableMCR(
+            n_timesteps, n_species, n_energies,
+            C_guess=torch.tensor(C_guess[reselector]), ST_guess=torch.tensor(ST_guess),
             C_min=0.001, ST_min=0.001,
             )
 
     optimizer = optim.LBFGS(model.parameters(), history_size=10000)
     scheduler = None
-    model.train(D[reselector], optimizer, scheduler, constraints,
-                max_epoches=10000, verbose=10, gtol=1e-7, xtol=1e-2)
+    model.fit(D[reselector], optimizer, scheduler, constraints=constraints,
+              max_epochs=10000, verbose=10, gtol=1e-7, xtol=1e-2)
 
     C_opt = np.full_like(C_guess, np.nan)
     C_opt[reselector] = model.concentrations().detach().numpy()
@@ -545,4 +475,8 @@ for edge in spec_dict.keys():
 
     for k, sp in enumerate(species):
         write_ascii(f'{edge}_SD_ST_opt_{k}.dat', grids[0], ST_opt[k])
+
+    if edge == 'Cu-K':
+        kenrall_rank = KendallRankCorrCoeff(0.001, torch.tensor(C_opt_dict['Cu-K'][reselector]))
+        constraints_dict['Ga-K'].append(kenrall_rank)
 
