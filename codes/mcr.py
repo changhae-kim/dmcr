@@ -3,6 +3,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class AnchorLoss(nn.Module):
+    """
+    Constrain one species to a target concentration.
+
+    This is a soft constraint used to anchor a chosen species at a known
+    concentration level or to remove an otherwise arbitrary rotational
+    ambiguity in the matrix factorization.
+    """
+
     def __init__(
         self,
         weight: float,
@@ -26,6 +34,12 @@ class AnchorLoss(nn.Module):
         return loss
 
 class TemporalSmoothnessLoss(nn.Module):
+    """
+    Encourage concentrations to vary smoothly.
+
+    This loss penalizes differences between adjacent time points. Optional break
+    indices can be exempted so that known discontinuities do not contribute.
+    """
     def __init__(
         self,
         weight: float,
@@ -49,6 +63,8 @@ class TemporalSmoothnessLoss(nn.Module):
         return loss
 
 class SpectralSmoothnessLoss(nn.Module):
+    """Encourage each component spectrum to be smooth."""
+
     def __init__(
         self,
         weights: list[float],
@@ -69,6 +85,13 @@ class SpectralSmoothnessLoss(nn.Module):
         return loss
 
 class KendallRankCorrCoeff(nn.Module):
+    """
+    Encourage the concentration ordering to match a reference.
+
+    The target is the pairwise sign comparison of a reference concentration
+    matrix. The loss matches pairwise ordering in the concentrations.
+    """
+
     def __init__(
         self,
         weight: float,
@@ -100,6 +123,15 @@ class KendallRankCorrCoeff(nn.Module):
         return loss
 
 class DifferentiableMCR(nn.Module):
+    """
+    Differentiable multivariate curve resolution.
+
+    This model stores unconstrained latent variables and maps them to physically
+    meaningful quantities:
+      - concentrations are normalized with a softmax so each row sums to one,
+      - spectra are exponentiated so they remain strictly positive.
+    """
+
     def __init__(
         self,
         n_timesteps: int = None,
@@ -120,6 +152,7 @@ class DifferentiableMCR(nn.Module):
         self.dtype = torch.get_default_dtype()
         self.device = torch.get_default_device()
 
+        # If guess are provided, then initialize the latent variables with their logarithms.
         if C_guess is not None:
             C0 = C_guess.clamp_min(C_min)
             c0 = torch.log(C0)
@@ -131,6 +164,7 @@ class DifferentiableMCR(nn.Module):
             self.dtype = st0.dtype
             self.device = st0.device
 
+        # If no guesses are provided, then fall back to zero latent variables.
         if C_guess is None:
             c0 = torch.zeros((n_timesteps, n_species), dtype=self.dtype, device=self.device)
         if ST_guess is None:
@@ -191,6 +225,7 @@ class DifferentiableMCR(nn.Module):
         gtol: float = 1e-7,
         xtol: float = 1e-2,
     ) -> None:
+        """Optimize the latent variables against the data matrix."""
 
         def closure():
             optimizer.zero_grad()
@@ -205,6 +240,8 @@ class DifferentiableMCR(nn.Module):
             return loss
 
         for epoch in range(max_epochs):
+
+            # Save state before step
             C_pre = self.concentrations()
             ST_pre = self.spectra()
             loss = closure()
@@ -213,22 +250,32 @@ class DifferentiableMCR(nn.Module):
                 for group in optimizer.param_groups
                 for param in group["params"]
             ])
+
+            # Optimization step
             if isinstance(optimizer, torch.optim.LBFGS):
                 optimizer.step(closure)
             else:
                 optimizer.step()
+
+            # Recompute state after step
             C_post = self.concentrations()
             ST_post = self.spectra()
             dCmax = (C_post - C_pre).abs().max()
             dSTmax = (ST_post - ST_pre).abs().max()
             lr = optimizer.param_groups[0]["lr"]
+
+            # Update learning-rate scheduler
             if scheduler is not None:
                 if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                     scheduler.step(loss)
                 else:
                     scheduler.step()
+
+            # Report progress
             if epoch % verbose == 0:
                 print(f"Epoch {epoch} Loss = {loss.item():.6g} Gmax = {gmax:.6g} LR = {lr:.6g} dCmax = {dCmax:.6g} dSTmax = {dSTmax:.6g}")
+
+            # Check convergence
             if gmax < gtol and max(dCmax, dSTmax) < xtol * lr:
                 break
             elif max(dCmax, dSTmax) == 0.0:
@@ -236,6 +283,7 @@ class DifferentiableMCR(nn.Module):
             else:
                 continue
 
+        # Final report
         optimizer.zero_grad()
         C = self.concentrations()
         ST = self.spectra()

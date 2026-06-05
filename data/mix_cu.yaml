@@ -1,3 +1,8 @@
+# Input Cu2O + Ga2O3 physical mixture Cu-K spectra.
+# Each file is read as an ASCII file and cropped to the energy window
+# defined below before being passed to the deconvolution model.
+# The first block corresponds to one experimental series and the second
+# block corresponds to another series combined into a single MCR fit.
 filepaths:
   - flat_2_0.dat
   - flat_2_1.dat
@@ -108,6 +113,9 @@ e0: 8979.0
 pre_edge: -20.0
 post_edge: +100.0
 
+# Initial guesses for concentrations and spectra.
+# The guess concentrations were generated using an ad hoc script.
+# The guess spectra are representative spectra in the dataset.
 model:
   C_guess: mix_cu_c_guess.npy
   ST_guess:
@@ -115,9 +123,13 @@ model:
     - flat_2_33.dat
     - flat_2_63.dat
 
+# Smooth concentrations across neighboring timesteps, except at
+# the declared break which separates the two experimental series.
 temporal_smoothness:
   weight: 1.0E-3
   i_breaks: [63]
 
+# Regularize spectral shapes by penalizing roughness.
+# One weight per species.
 spectral_smoothness:
   weights: [0.01, 0.01, 0.01]

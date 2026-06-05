@@ -1,3 +1,19 @@
+"""
+Examples:
+
+  python deconv_spec.py ../data/cgo_cu.yaml
+  python deconv_spec.py ../data/cgo_cu.yaml
+  python deconv_spec.py ../data/mix_cu.yaml -i ../data -o .
+
+Notes:
+  * The config file path is required.
+  * By default, input files are read relative to the config file path.
+  * Results are written to the current directory unless --outdir is specified.
+  * In the CuGaO2 workflow, `cgo_cu.yaml` should be run before `cgo_ga.yaml`,
+    because Ga uses the Cu concentrations as a reference for the Kendall rank
+    correlation coefficient.
+"""
+
 import argparse
 import os
 import yaml
@@ -18,6 +34,13 @@ from mcr import (
     KendallRankCorrCoeff,
     DifferentiableMCR,
 )
+
+# ----------------------------------------------------------------------------
+# Configuration schema
+# ----------------------------------------------------------------------------
+# These dataclasses define the structure expected in the YAML config files.
+# They keep dataset-specific choices, model dimensions, and optional
+# regularization terms separate from the core optimization code.
 
 @dataclass
 class ModelParams:
@@ -73,8 +96,15 @@ class Config:
 
 def main():
 
+    # ------------------------------------------------------------------------
     # Parse arguments
-    parser = argparse.ArgumentParser(description="Shared Differentiable MCR Driver")
+    # ------------------------------------------------------------------------
+    # The config file supplies all run-specific parameters, while the optional
+    # input/output directories control file resolution and export location.
+    parser = argparse.ArgumentParser(
+        description="Differentiable Multivariate Curve Resolution on XAS Spectra",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("config", type=str, help="Path to config YAML")
     parser.add_argument("-i", "--inpdir", type=str, default=None,
         help="Input directory with data files (default = same as config YAML)")
@@ -91,7 +121,12 @@ def main():
         inpdir = os.path.dirname(args.config)
     outdir = args.outdir
 
+    # ------------------------------------------------------------------------
     # Load spectra
+    # ------------------------------------------------------------------------
+    # Each file is cropped to the requested energy window, then stacked into a
+    # common array. The energy grid is retained so the recovered spectra can be
+    # written back on the same abscissa.
     emin = config.e0 + config.pre_edge
     emax = config.e0 + config.post_edge
     grids = []
@@ -105,7 +140,11 @@ def main():
     grids = np.array(grids)
     specs = np.array(specs)
 
+    # ------------------------------------------------------------------------
     # Set up guess concentrations & spectra
+    # ------------------------------------------------------------------------
+    # Concentration guesses are stored as NumPy arrays, while spectral guesses
+    # are read from ASCII files and cropped to the same energy window.
     if config.model.C_guess is None:
         C_guess = None
     else:
@@ -124,7 +163,11 @@ def main():
             ST_guess.append(dat.flat[select])
         ST_guess = torch.tensor(ST_guess)
 
+    # ------------------------------------------------------------------------
     # Set up model & optimizer
+    # ------------------------------------------------------------------------
+    # The model stores unconstrained latent variables internally and maps them
+    # to positive concentrations/spectra during evaluation.
     model = DifferentiableMCR(
         n_timesteps=config.model.n_timesteps,
         n_species=config.model.n_species,
@@ -139,7 +182,11 @@ def main():
     optimizer = optim.LBFGS(model.parameters(), history_size=10000)
     scheduler = None
 
+    # ------------------------------------------------------------------------
     # Set up constraints
+    # ------------------------------------------------------------------------
+    # Each optional term is only added when its weight is positive (or, in the
+    # case of spectral smoothness, when weights are supplied).
     constraints = []
     if config.anchor.weight > 0.0:
         anchor = AnchorLoss(
@@ -169,7 +216,12 @@ def main():
         )
         constraints.append(kendall_rank)
 
+    # ------------------------------------------------------------------------
     # Run MCR
+    # ------------------------------------------------------------------------
+    # The measured spectra are converted to a tensor and passed into the
+    # model's training loop together with the chosen constraints and stopping
+    # criteria.
     D = torch.tensor(specs)
     model.fit(
         D,
@@ -184,7 +236,11 @@ def main():
     C_opt = model.concentrations().detach().numpy()
     ST_opt = model.spectra().detach().numpy()
 
+    # ------------------------------------------------------------------------
     # Save results
+    # ------------------------------------------------------------------------
+    # The optimized factors are written as NumPy arrays, and each component
+    # spectrum is also exported as a two-column ASCII file.
     np.save("C_opt.npy", C_opt)
     np.save("ST_opt.npy", ST_opt)
     for k, _ in enumerate(ST_opt):
