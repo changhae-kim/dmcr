@@ -1,0 +1,123 @@
+filepaths:
+  - flat_2_0.dat
+  - flat_2_1.dat
+  - flat_2_2.dat
+  - flat_2_3.dat
+  - flat_2_4.dat
+  - flat_2_5.dat
+  - flat_2_6.dat
+  - flat_2_7.dat
+  - flat_2_8.dat
+  - flat_2_9.dat
+  - flat_2_10.dat
+  - flat_2_11.dat
+  - flat_2_12.dat
+  - flat_2_13.dat
+  - flat_2_14.dat
+  - flat_2_15.dat
+  - flat_2_16.dat
+  - flat_2_17.dat
+  - flat_2_18.dat
+  - flat_2_19.dat
+  - flat_2_20.dat
+  - flat_2_21.dat
+  - flat_2_22.dat
+  - flat_2_23.dat
+  - flat_2_24.dat
+  - flat_2_25.dat
+  - flat_2_26.dat
+  - flat_2_27.dat
+  - flat_2_28.dat
+  - flat_2_29.dat
+  - flat_2_30.dat
+  - flat_2_31.dat
+  - flat_2_32.dat
+  - flat_2_33.dat
+  - flat_2_34.dat
+  - flat_2_35.dat
+  - flat_2_36.dat
+  - flat_2_37.dat
+  - flat_2_38.dat
+  - flat_2_39.dat
+  - flat_2_40.dat
+  - flat_2_41.dat
+  - flat_2_42.dat
+  - flat_2_43.dat
+  - flat_2_44.dat
+  - flat_2_45.dat
+  - flat_2_46.dat
+  - flat_2_47.dat
+  - flat_2_48.dat
+  - flat_2_49.dat
+  - flat_2_50.dat
+  - flat_2_51.dat
+  - flat_2_52.dat
+  - flat_2_53.dat
+  - flat_2_54.dat
+  - flat_2_55.dat
+  - flat_2_56.dat
+  - flat_2_57.dat
+  - flat_2_58.dat
+  - flat_2_59.dat
+  - flat_2_60.dat
+  - flat_2_61.dat
+  - flat_2_62.dat
+  - flat_2_63.dat
+  - flat_6_0.dat
+  - flat_6_1.dat
+  - flat_6_2.dat
+  - flat_6_3.dat
+  - flat_6_4.dat
+  - flat_6_5.dat
+  - flat_6_6.dat
+  - flat_6_7.dat
+  - flat_6_8.dat
+  - flat_6_9.dat
+  - flat_6_10.dat
+  - flat_6_11.dat
+  - flat_6_12.dat
+  - flat_6_13.dat
+  - flat_6_14.dat
+  - flat_6_15.dat
+  - flat_6_16.dat
+  - flat_6_17.dat
+  - flat_6_18.dat
+  - flat_6_19.dat
+  - flat_6_20.dat
+  - flat_6_21.dat
+  - flat_6_22.dat
+  - flat_6_23.dat
+  - flat_6_24.dat
+  - flat_6_25.dat
+  - flat_6_26.dat
+  - flat_6_27.dat
+  - flat_6_28.dat
+  - flat_6_29.dat
+  - flat_6_30.dat
+  - flat_6_31.dat
+  - flat_6_32.dat
+  - flat_6_33.dat
+  - flat_6_34.dat
+  - flat_6_35.dat
+  - flat_6_36.dat
+  - flat_6_37.dat
+  - flat_6_38.dat
+  - flat_6_39.dat
+  - flat_6_40.dat
+e0: 8979.0
+pre_edge: -20.0
+post_edge: +100.0
+
+model:
+  C_guess: mix_cu_c_guess.npy
+  ST_guess:
+    - flat_2_0.dat
+    - flat_2_33.dat
+    - flat_2_63.dat
+
+temporal_smoothness:
+  weight: 1.0E-3
+  i_breaks: [63]
+
+spectral_smoothness:
+  weights: [0.01, 0.01, 0.01]

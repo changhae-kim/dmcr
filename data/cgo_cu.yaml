@@ -1,0 +1,156 @@
+filepaths:
+  - flat_0_10.dat
+  - flat_0_11.dat
+  - flat_0_12.dat
+  - flat_0_13.dat
+  - flat_0_14.dat
+  - flat_0_15.dat
+  - flat_0_16.dat
+  - flat_0_17.dat
+  - flat_0_18.dat
+  - flat_0_19.dat
+  - flat_0_20.dat
+  - flat_0_21.dat
+  - flat_0_22.dat
+  - flat_0_23.dat
+  - flat_0_24.dat
+  - flat_0_25.dat
+  - flat_0_26.dat
+  - flat_0_27.dat
+  - flat_0_28.dat
+  - flat_0_29.dat
+  - flat_0_30.dat
+  - flat_0_31.dat
+  - flat_0_32.dat
+  - flat_0_33.dat
+  - flat_0_34.dat
+  - flat_0_35.dat
+  - flat_0_36.dat
+  - flat_0_37.dat
+  - flat_0_38.dat
+  - flat_0_39.dat
+  - flat_0_40.dat
+  - flat_0_41.dat
+  - flat_0_42.dat
+  - flat_0_43.dat
+  - flat_0_44.dat
+  - flat_0_45.dat
+  - flat_0_46.dat
+  - flat_0_47.dat
+  - flat_0_48.dat
+  - flat_0_49.dat
+  - flat_0_50.dat
+  - flat_0_51.dat
+  - flat_0_52.dat
+  - flat_0_53.dat
+  - flat_0_54.dat
+  - flat_0_55.dat
+  - flat_0_56.dat
+  - flat_0_57.dat
+  - flat_0_58.dat
+  - flat_0_59.dat
+  - flat_0_60.dat
+  - flat_0_62.dat
+  - flat_0_63.dat
+  - flat_0_64.dat
+  - flat_4_10.dat
+  - flat_4_11.dat
+  - flat_4_12.dat
+  - flat_4_13.dat
+  - flat_4_14.dat
+  - flat_4_15.dat
+  - flat_4_16.dat
+  - flat_4_17.dat
+  - flat_4_18.dat
+  - flat_4_19.dat
+  - flat_4_20.dat
+  - flat_4_21.dat
+  - flat_4_22.dat
+  - flat_4_23.dat
+  - flat_4_24.dat
+  - flat_4_25.dat
+  - flat_4_26.dat
+  - flat_4_27.dat
+  - flat_4_28.dat
+  - flat_4_29.dat
+  - flat_4_30.dat
+  - flat_4_31.dat
+  - flat_4_32.dat
+  - flat_4_33.dat
+  - flat_4_34.dat
+  - flat_4_35.dat
+  - flat_4_36.dat
+  - flat_4_37.dat
+  - flat_4_38.dat
+  - flat_4_39.dat
+  - flat_4_40.dat
+  - flat_4_41.dat
+  - flat_4_42.dat
+  - flat_4_43.dat
+  - flat_4_44.dat
+  - flat_4_45.dat
+  - flat_4_46.dat
+  - flat_4_47.dat
+  - flat_4_48.dat
+  - flat_4_49.dat
+  - flat_4_50.dat
+  - flat_4_51.dat
+  - flat_4_52.dat
+  - flat_4_53.dat
+  - flat_4_54.dat
+  - flat_4_55.dat
+  - flat_4_56.dat
+  - flat_4_57.dat
+  - flat_4_58.dat
+  - flat_4_59.dat
+  - flat_4_60.dat
+  - flat_4_61.dat
+  - flat_4_62.dat
+  - flat_4_63.dat
+  - flat_4_64.dat
+  - flat_4_65.dat
+  - flat_4_66.dat
+  - flat_4_67.dat
+  - flat_4_68.dat
+  - flat_4_69.dat
+  - flat_4_70.dat
+  - flat_4_71.dat
+  - flat_4_72.dat
+  - flat_4_73.dat
+  - flat_4_74.dat
+  - flat_4_75.dat
+  - flat_4_76.dat
+  - flat_4_77.dat
+  - flat_4_78.dat
+  - flat_4_79.dat
+  - flat_4_80.dat
+  - flat_4_81.dat
+  - flat_4_82.dat
+  - flat_4_83.dat
+  - flat_4_84.dat
+  - flat_4_85.dat
+  - flat_4_86.dat
+  - flat_4_87.dat
+e0: 8979.0
+pre_edge: -20.0
+post_edge: +100.0
+
+model:
+  C_guess: cgo_cu_c_guess.npy
+  ST_guess:
+    - flat_0_10.dat
+    - flat_0_10.dat
+    - flat_0_23.dat
+    - flat_0_64.dat
+
+anchor:
+  weight: 1.0
+  i_species: 0
+  C0: 0.7
+
+temporal_smoothness:
+  weight: 1.0E-3
+  i_breaks: [62]
+
+spectral_smoothness:
+  weights: [0.09, 0.02, 0.01, 0.01]

@@ -1,0 +1,160 @@
+filepaths:
+  - flat_1_9.dat
+  - flat_1_10.dat
+  - flat_1_11.dat
+  - flat_1_12.dat
+  - flat_1_13.dat
+  - flat_1_14.dat
+  - flat_1_15.dat
+  - flat_1_16.dat
+  - flat_1_17.dat
+  - flat_1_18.dat
+  - flat_1_19.dat
+  - flat_1_20.dat
+  - flat_1_21.dat
+  - flat_1_22.dat
+  - flat_1_23.dat
+  - flat_1_24.dat
+  - flat_1_25.dat
+  - flat_1_26.dat
+  - flat_1_27.dat
+  - flat_1_28.dat
+  - flat_1_29.dat
+  - flat_1_30.dat
+  - flat_1_31.dat
+  - flat_1_32.dat
+  - flat_1_34.dat
+  - flat_1_35.dat
+  - flat_1_36.dat
+  - flat_1_37.dat
+  - flat_1_38.dat
+  - flat_1_39.dat
+  - flat_1_40.dat
+  - flat_1_41.dat
+  - flat_1_42.dat
+  - flat_1_43.dat
+  - flat_1_44.dat
+  - flat_1_45.dat
+  - flat_1_46.dat
+  - flat_1_47.dat
+  - flat_1_48.dat
+  - flat_1_49.dat
+  - flat_1_50.dat
+  - flat_1_51.dat
+  - flat_1_52.dat
+  - flat_1_53.dat
+  - flat_1_54.dat
+  - flat_1_55.dat
+  - flat_1_56.dat
+  - flat_1_57.dat
+  - flat_1_58.dat
+  - flat_1_59.dat
+  - flat_1_60.dat
+  - flat_1_61.dat
+  - flat_1_62.dat
+  - flat_1_63.dat
+  - flat_5_10.dat
+  - flat_5_11.dat
+  - flat_5_12.dat
+  - flat_5_14.dat
+  - flat_5_15.dat
+  - flat_5_16.dat
+  - flat_5_17.dat
+  - flat_5_18.dat
+  - flat_5_19.dat
+  - flat_5_20.dat
+  - flat_5_21.dat
+  - flat_5_22.dat
+  - flat_5_23.dat
+  - flat_5_24.dat
+  - flat_5_25.dat
+  - flat_5_26.dat
+  - flat_5_27.dat
+  - flat_5_28.dat
+  - flat_5_29.dat
+  - flat_5_30.dat
+  - flat_5_31.dat
+  - flat_5_32.dat
+  - flat_5_33.dat
+  - flat_5_34.dat
+  - flat_5_35.dat
+  - flat_5_36.dat
+  - flat_5_37.dat
+  - flat_5_38.dat
+  - flat_5_39.dat
+  - flat_5_40.dat
+  - flat_5_41.dat
+  - flat_5_42.dat
+  - flat_5_43.dat
+  - flat_5_44.dat
+  - flat_5_45.dat
+  - flat_5_46.dat
+  - flat_5_47.dat
+  - flat_5_48.dat
+  - flat_5_49.dat
+  - flat_5_50.dat
+  - flat_5_51.dat
+  - flat_5_52.dat
+  - flat_5_53.dat
+  - flat_5_54.dat
+  - flat_5_55.dat
+  - flat_5_56.dat
+  - flat_5_57.dat
+  - flat_5_58.dat
+  - flat_5_59.dat
+  - flat_5_60.dat
+  - flat_5_61.dat
+  - flat_5_62.dat
+  - flat_5_63.dat
+  - flat_5_64.dat
+  - flat_5_65.dat
+  - flat_5_66.dat
+  - flat_5_67.dat
+  - flat_5_68.dat
+  - flat_5_69.dat
+  - flat_5_70.dat
+  - flat_5_71.dat
+  - flat_5_72.dat
+  - flat_5_73.dat
+  - flat_5_74.dat
+  - flat_5_75.dat
+  - flat_5_76.dat
+  - flat_5_77.dat
+  - flat_5_78.dat
+  - flat_5_79.dat
+  - flat_5_80.dat
+  - flat_5_81.dat
+  - flat_5_82.dat
+  - flat_5_83.dat
+  - flat_5_84.dat
+  - flat_5_85.dat
+  - flat_5_86.dat
+  - flat_5_87.dat
+  - flat_5_88.dat
+e0: 10367.2
+pre_edge: -20.0
+post_edge: +100.0
+
+model:
+  C_guess: cgo_ga_c_guess.npy
+  ST_guess:
+    - flat_1_9.dat
+    - flat_1_9.dat
+    - flat_1_22.dat
+    - flat_1_63.dat
+
+anchor:
+  weight: 1.0
+  i_species: 0
+  C0: 0.7
+
+temporal_smoothness:
+  weight: 1.0E-3
+  i_breaks: [62]
+
+spectral_smoothness:
+  weights: [0.31, 0.10, 0.01, 0.01]
+
+kendall_rank:
+  weight: 1.0E-3
+  C_ref: cgo_cu_c_opt.npy
