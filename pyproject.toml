@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dmcr"
+version = "0.0.1"
+description = "Differentiable Multivariate Curve Resolution for XAS Spectra"
+readme = "README.md"
+license = "BSD-3-Clause"
+
+authors = [
+  { name = "Changhae Kim", email = "ckim6@bnl.gov" },
+  { name = "Xiaohui Qu", email = "xiaqu@bnl.gov" },
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+
+requires-python = "==3.13.7"
+
+dependencies = [
+  "dacite==1.9.2",
+  "numpy==2.3.3",
+  "PyYAML==6.0.3",
+  "torch==2.8.0",
+  "xraylarch==2025.3.0",
+]
+
+[project.scripts]
+deconv_spec = "dmcr.deconv_spec:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["dmcr*"]
