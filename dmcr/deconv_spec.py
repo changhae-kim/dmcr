@@ -1,9 +1,9 @@
 """
 Examples:
 
-  python deconv_spec.py ../data/cgo_cu.yaml
-  python deconv_spec.py ../data/cgo_cu.yaml
-  python deconv_spec.py ../data/mix_cu.yaml -i ../data -o .
+  python deconv_spec.py ../examples/CuGaXAS/cgo_cu.yaml
+  python deconv_spec.py ../examples/CuGaXAS/cgo_cu.yaml
+  python deconv_spec.py ../examples/CuGaXAS/mix_cu.yaml -i ../examples/CuGaXAS -o .
 
 Notes:
   * The config file path is required.
@@ -27,7 +27,7 @@ from dacite import from_dict
 from dataclasses import dataclass, field
 from larch.io.columnfile import read_ascii, write_ascii
 
-from mcr import (
+from dmcr.mcr import (
     AnchorLoss,
     TemporalSmoothnessLoss,
     SpectralSmoothnessLoss,
