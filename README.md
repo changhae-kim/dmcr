@@ -227,7 +227,13 @@ All required spectra, configuration files, and initialization data are distribut
 If you use this software in published work, please cite the accompanying publication.
 
 ```text
-Citation information will be added upon publication.
+@unpublished{
+	Fornero2026,
+	author={Fornero, Esteban L. and Kim, Changhae Andrew and Boscoboinik, J. Anibal and Dalotto, Florencia and Qu, Xiaohui and Chen, Xiaobo and Bjorklund, Jennifer and Stavitski, Eli and Yang, Judith and Mason, Sara E. and Ganduglia-Pirovano, M. Ver{\'o}nica and Bonivardi, Adrian L. and Lustemberg, Pablo and Stacchiola, Dario},
+	title={Direct Propylene Epoxidation on Partially Oxidized Copper Centers Stabilized within a Mixed Oxide},
+	note={Manuscript in preparation},
+	year={2026},
+}
 ```
 
 ---
