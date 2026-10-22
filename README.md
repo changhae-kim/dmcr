@@ -21,18 +21,20 @@ This repository provides:
 
 ## Installation
 
-Create and activate the Conda environment:
+DMCR supports Python **3.13 and 3.14** (both tested). From the repository root, install DMCR and its runtime dependencies using pip:
 
 ```bash
-conda env create -f environment.yml
-conda activate dmcr
+python -m pip install .
 ```
 
-Install the package:
+For development, use an editable installation with the optional test dependencies:
 
 ```bash
-pip install -e .
+python -m pip install -e ".[test]"
+python -m pytest tests/ -v
 ```
+
+The supplied `environment.yml` is a snapshot of the validated development environment, **not a prerequisite** for pip installation. It contains platform-specific and GPU-related packages and may not solve on other systems. If you wish to reproduce that environment on a compatible machine, use `conda env create -f environment.yml` and activate the resulting environment before installing DMCR. A CUDA GPU is not required by the DMCR algorithm; PyTorch installation details depend on your platform.
 
 This installs the command-line interface:
 
@@ -64,7 +66,7 @@ examples/
     │
     └── *.dat                 # Example XAS spectra
 
-environment.yml              # Conda environment
+environment.yml              # Validated Conda environment snapshot
 pyproject.toml               # Package metadata and installation
 README.md                    # Project documentation
 LICENSE                      # License information
@@ -88,8 +90,8 @@ $$
 
 where
 
-* (C) is the concentration matrix,
-* (S^T) contains the component spectra.
+* $C$ is the concentration matrix (one row per measured spectrum),
+* $S^T$ contains the component spectra (one row per component).
 
 The implementation enforces physically meaningful constraints through differentiable parameterizations:
 
@@ -97,7 +99,9 @@ The implementation enforces physically meaningful constraints through differenti
 * component spectra are constrained to remain positive,
 * optional regularization terms can enforce smoothness, anchoring, or rank-order relationships.
 
-Optimization can be performed using standard PyTorch optimizers. Currently, LBFGS is selected in `deconv_spec`.
+The core library accepts standard PyTorch optimizers; the `deconv_spec` command uses LBFGS. Concentration rows sum to one by construction, and recovered component spectra are strictly positive. These are model assumptions and may not suit every spectral preprocessing convention.
+
+**Interpretation:** A low reconstruction error does not establish uniqueness or chemical identity of the recovered components. MCR can have ambiguous solutions; initial guesses, chosen components, and regularization affect interpretation. The provided examples are demonstrations, not universal convergence guarantees.
 
 ---
 
@@ -114,20 +118,44 @@ Typical settings include:
 * optimization settings,
 * regularization parameters.
 
-A minimal example:
+An illustrative configuration (file paths refer to files in the same directory as the YAML unless `--inpdir` is supplied):
 
 ```yaml
 filepaths:
   - spec0000.dat
   - spec0001.dat
   - spec0002.dat
-
+e0: 8979.0
+pre_edge: -20.0
+post_edge: 100.0
 model:
   C_guess: C_guess.npy
   ST_guess:
     - ST_guess_0.dat
     - ST_guess_1.dat
+fit:
+  max_epochs: 1000
+  verbose: 10
 ```
+
+The example assumes three spectra with a common energy grid, a concentration guess shaped `(3, 2)`, and two initial component spectra sampled on the selected energy grid. Input ASCII spectra must have energy and intensity columns readable by `larch.io.columnfile.read_ascii`.
+
+| YAML key | Meaning |
+|---|---|
+| `filepaths` | Input spectra, ordered by sample/time point |
+| `e0`, `pre_edge`, `post_edge` | Select energies strictly between `e0 + pre_edge` and `e0 + post_edge` |
+| `model.C_guess` | Optional NumPy concentration initialization |
+| `model.ST_guess` | Optional list of initial component spectra files |
+| `model.n_timesteps`, `model.n_species`, `model.n_energies` | Dimensions used when corresponding guesses are omitted |
+| `model.C_min`, `model.ST_min` | Floors applied before logarithmic initialization |
+| `model.c_requires_grad`, `model.st_requires_grad` | Control which factors are optimized |
+| `fit.max_epochs`, `fit.verbose`, `fit.gtol`, `fit.xtol` | Optimization and stopping settings |
+| `anchor.weight`, `anchor.i_species`, `anchor.C0` | Penalize deviation of one concentration profile from a specified level |
+| `temporal_smoothness.weight`, `temporal_smoothness.i_breaks` | Penalize changes between adjacent concentrations, except at declared sequence breaks |
+| `spectral_smoothness.weights` | Component-wise penalties on spectral roughness |
+| `kendall_rank.weight`, `kendall_rank.C_ref` | Kendall rank-correlation penalty using a saved reference concentration array |
+
+Consult the three complete configurations under `examples/CuGaXAS/` for working parameter combinations. Optional constraint terms are enabled by their configured weights.
 
 ---
 
@@ -140,7 +168,7 @@ The repository includes a Cu/Ga XAS benchmark dataset demonstrating several comm
 Recover concentration profiles and component spectra from a CuGaO<sub>2</sub> Cu K-edge XAS series:
 
 ```bash
-deconv_spec examples/CuGaXAS/cgo_cu.yaml
+deconv_spec examples/CuGaXAS/cgo_cu.yaml --outdir results/cgo_cu
 ```
 
 ### CuGaO<sub>2</sub> Ga K-edge Deconvolution
@@ -148,7 +176,7 @@ deconv_spec examples/CuGaXAS/cgo_cu.yaml
 Perform a corresponding deconvolution on the CuGaO<sub>2</sub> Ga K-edge dataset:
 
 ```bash
-deconv_spec examples/CuGaXAS/cgo_ga.yaml
+deconv_spec examples/CuGaXAS/cgo_ga.yaml --outdir results/cgo_ga
 ```
 
 This workflow uses a Kendall rank correlation constraint to encourage consistency with the Cu concentration evolution. A precomputed Cu concentration profile (`cgo_cu_c_opt.npy`) is distributed with the repository so that the example can be run directly.
@@ -158,7 +186,7 @@ This workflow uses a Kendall rank correlation constraint to encourage consistenc
 Deconvolve Cu K-edge spectra for the Cu<sub>2</sub>O + Ga<sub>2</sub>O<sub>3</sub> physical mixture:
 
 ```bash
-deconv_spec examples/CuGaXAS/mix_cu.yaml
+deconv_spec examples/CuGaXAS/mix_cu.yaml --outdir results/mix_cu
 ```
 
 ---
@@ -218,13 +246,15 @@ deconv_spec examples/CuGaXAS/cgo_ga.yaml
 deconv_spec examples/CuGaXAS/mix_cu.yaml
 ```
 
-All required spectra, configuration files, and initialization data are distributed with the repository.
+All required spectra, configuration files, and initialization data are distributed with the repository. Use separate output directories to avoid overwriting files: the output filenames are the same for every run. The Ga example uses the **bundled** `cgo_cu_c_opt.npy` as its Kendall reference, not the newly generated `results/cgo_cu/C_opt.npy`. Replacing that reference with a new fit requires an explicit configuration change and may change the results.
+
+Run the automated tests with `python -m pytest tests/ -v` after installing the optional `test` dependencies. For numerical comparisons, keep the Python/PyTorch versions, initial guesses, and optimization settings consistent; exact cross-platform or GPU bitwise reproducibility is not guaranteed.
 
 ---
 
 ## Citation
 
-If you use this software in published work, please cite the accompanying publication.
+If you use this software in published work, please cite the accompanying publication when it becomes available. The following entry describes a manuscript in preparation; it is **not** a published paper or a DOI. Update the citation once the publication has a permanent bibliographic record.
 
 ```text
 @unpublished{
@@ -235,6 +265,12 @@ If you use this software in published work, please cite the accompanying publica
 	year={2026},
 }
 ```
+
+---
+
+## Version and license
+
+The initial software version is **0.0.1**. This is a pre-1.0 research release; interfaces and configuration options may evolve. See the repository's `LICENSE` file for the approved software terms.
 
 ---
 
