@@ -15,7 +15,7 @@ Notes:
 """
 
 import argparse
-import os
+from pathlib import Path
 import yaml
 
 import numpy as np
@@ -94,6 +94,25 @@ class Config:
     spectral_smoothness: SpectralSmoothnessParams = field(default_factory=SpectralSmoothnessParams)
     kendall_rank: KendallRankCorrParams = field(default_factory=KendallRankCorrParams)
 
+def _existing_file(directory, filename, description):
+    """Resolve a configured input and report missing files clearly."""
+    if not isinstance(filename, str) or not filename.strip():
+        raise ValueError(f"{description} must be a nonempty filename")
+    path = directory / filename
+    if not path.is_file():
+        raise FileNotFoundError(f"{description} not found: {path}")
+    return path
+
+
+def _check_grid(grid, reference, filename):
+    """All spectra must use the same energy axis for matrix factorization."""
+    if grid.size == 0:
+        raise ValueError(f"No energy points in selected range: {filename}")
+    if reference is not None and (grid.shape != reference.shape or
+                                  not np.allclose(grid, reference, rtol=1e-7, atol=1e-8)):
+        raise ValueError(f"Energy grid differs from first input spectrum: {filename}")
+
+
 def main():
 
     # ------------------------------------------------------------------------
@@ -112,14 +131,36 @@ def main():
         help="Output directory for exports (default = current directory)")
     args = parser.parse_args()
 
-    with open(args.config, "rt") as f:
-        data = yaml.safe_load(f)
-    config = from_dict(data_class=Config, data=data)
-    if args.inpdir is not None:
-        inpdir = args.inpdir
-    else:
-        inpdir = os.path.dirname(args.config)
-    outdir = args.outdir
+    try:
+        config_path = Path(args.config).expanduser().resolve()
+        if not config_path.is_file():
+            raise FileNotFoundError(f"Configuration file not found: {config_path}")
+        with config_path.open("rt", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        if not isinstance(data, dict):
+            raise ValueError("Configuration must contain a YAML mapping")
+        config = from_dict(data_class=Config, data=data)
+        if not config.filepaths:
+            raise ValueError("Configuration 'filepaths' must contain at least one spectrum")
+        inpdir = (Path(args.inpdir).expanduser().resolve() if args.inpdir is not None
+                  else config_path.parent)
+        if not inpdir.is_dir():
+            raise NotADirectoryError(f"Input directory not found: {inpdir}")
+        outdir = Path(args.outdir).expanduser().resolve()
+        if outdir.exists() and not outdir.is_dir():
+            raise NotADirectoryError(f"Output path is not a directory: {outdir}")
+        # Validate all file references before starting a potentially lengthy fit.
+        for name in config.filepaths:
+            _existing_file(inpdir, name, "Spectrum")
+        if config.model.C_guess is not None:
+            _existing_file(inpdir, config.model.C_guess, "Concentration guess")
+        if config.model.ST_guess is not None:
+            for name in config.model.ST_guess:
+                _existing_file(inpdir, name, "Spectral guess")
+        if config.kendall_rank.weight > 0:
+            _existing_file(inpdir, config.kendall_rank.C_ref, "Kendall reference")
+    except (OSError, ValueError, TypeError, yaml.YAMLError) as exc:
+        parser.error(str(exc))
 
     # ------------------------------------------------------------------------
     # Load spectra
@@ -131,11 +172,13 @@ def main():
     emax = config.e0 + config.post_edge
     grids = []
     specs = []
-    for filepath in config.filepaths:
-        filepath = os.path.join(inpdir, filepath)
+    for name in config.filepaths:
+        filepath = inpdir / name
         dat = read_ascii(filepath, labels="energy flat")
         select = (dat.energy > emin) & (dat.energy < emax)
-        grids.append(dat.energy[select])
+        grid = np.asarray(dat.energy[select])
+        _check_grid(grid, grids[0] if grids else None, filepath)
+        grids.append(grid)
         specs.append(dat.flat[select])
     grids = np.array(grids)
     specs = np.array(specs)
@@ -148,7 +191,7 @@ def main():
     if config.model.C_guess is None:
         C_guess = None
     else:
-        filepath = os.path.join(inpdir, config.model.C_guess)
+        filepath = inpdir / config.model.C_guess
         C_guess = np.load(filepath)
         C_guess = torch.tensor(C_guess)
 
@@ -157,9 +200,10 @@ def main():
     else:
         ST_guess = []
         for filepath in config.model.ST_guess:
-            filepath = os.path.join(inpdir, filepath)
+            filepath = inpdir / filepath
             dat = read_ascii(filepath, labels="energy flat")
             select = (dat.energy > emin) & (dat.energy < emax)
+            _check_grid(np.asarray(dat.energy[select]), grids[0], filepath)
             ST_guess.append(dat.flat[select])
         ST_guess = torch.tensor(ST_guess)
 
@@ -207,7 +251,7 @@ def main():
         )
         constraints.append(spectral_smoothness)
     if config.kendall_rank.weight > 0.0:
-        filepath = os.path.join(inpdir, config.kendall_rank.C_ref)
+        filepath = inpdir / config.kendall_rank.C_ref
         C_ref = np.load(filepath)
         C_ref = torch.tensor(C_ref)
         kendall_rank = KendallRankCorrCoeff(
@@ -241,10 +285,11 @@ def main():
     # ------------------------------------------------------------------------
     # The optimized factors are written as NumPy arrays, and each component
     # spectrum is also exported as a two-column ASCII file.
-    np.save("C_opt.npy", C_opt)
-    np.save("ST_opt.npy", ST_opt)
+    outdir.mkdir(parents=True, exist_ok=True)
+    np.save(outdir / "C_opt.npy", C_opt)
+    np.save(outdir / "ST_opt.npy", ST_opt)
     for k, _ in enumerate(ST_opt):
-        write_ascii(f"ST_opt_{k}.dat", grids[0], ST_opt[k])
+        write_ascii(str(outdir / f"ST_opt_{k}.dat"), grids[0], ST_opt[k])
 
 if __name__ == "__main__":
     exit(main())
