@@ -170,6 +170,13 @@ class DifferentiableMCR(nn.Module):
         if ST_guess is None:
             st0 = torch.zeros((n_species, n_energies), dtype=self.dtype, device=self.device)
 
+        if c0.ndim != 2 or st0.ndim != 2 or c0.shape[1] != st0.shape[0]:
+            raise ValueError(f"Incompatible initial concentration/spectra shapes: {tuple(c0.shape)}, {tuple(st0.shape)}")
+        if c0.device != st0.device or c0.dtype != st0.dtype:
+            raise ValueError("Initial concentrations and spectra must have matching dtype and device")
+        if not torch.isfinite(c0).all() or not torch.isfinite(st0).all():
+            raise ValueError("Initial concentrations and spectra must contain only finite values")
+
         self.c = nn.Parameter(c0, requires_grad=c_requires_grad)
         self.st = nn.Parameter(st0, requires_grad=st_requires_grad)
 
@@ -207,10 +214,10 @@ class DifferentiableMCR(nn.Module):
         C: torch.Tensor,
         ST: torch.Tensor,
         D: torch.Tensor,
-        constraints: list[callable] = [],
+        constraints: list[callable] | None = None,
     ) -> torch.Tensor:
         loss = self.reconstruction_mse(C, ST, D)
-        for constraint in constraints:
+        for constraint in (constraints if constraints is not None else ()):
             loss += constraint(C, ST, D)
         return loss
 
@@ -219,7 +226,7 @@ class DifferentiableMCR(nn.Module):
         D: torch.Tensor,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler.LRScheduler,
-        constraints: list[callable] = [],
+        constraints: list[callable] | None = None,
         max_epochs: int = 1000,
         verbose: int = 10,
         gtol: float = 1e-7,
@@ -227,15 +234,34 @@ class DifferentiableMCR(nn.Module):
     ) -> None:
         """Optimize the latent variables against the data matrix."""
 
+        if D.ndim != 2 or D.shape != (self.c.shape[0], self.st.shape[1]):
+            raise ValueError(f"D must have shape {(self.c.shape[0], self.st.shape[1])}; got {tuple(D.shape)}")
+        if D.dtype != self.c.dtype or D.device != self.c.device:
+            raise ValueError("D must have the same dtype and device as the model")
+        if not torch.isfinite(D).all():
+            raise ValueError("D must contain only finite values")
+        if max_epochs < 1:
+            raise ValueError("max_epochs must be at least 1")
+        if verbose < 1:
+            raise ValueError("verbose must be at least 1")
+        if not any(p.requires_grad for p in self.parameters()):
+            raise ValueError("At least one model parameter must require gradients")
+
+        def check_finite(value, label):
+            if not torch.isfinite(value).all():
+                raise FloatingPointError(f"Nonfinite {label} encountered during DMCR optimization")
+
         def closure():
             optimizer.zero_grad()
             C = self.concentrations()
             ST = self.spectra()
             loss = self.total_loss(C, ST, D, constraints)
+            check_finite(loss, "loss")
             loss.backward()
             for group in optimizer.param_groups:
                 for param in group["params"]:
                     if param.grad is not None:
+                        check_finite(param.grad, "gradient")
                         param.grad = param.grad.contiguous()
             return loss
 
@@ -260,6 +286,8 @@ class DifferentiableMCR(nn.Module):
             # Recompute state after step
             C_post = self.concentrations()
             ST_post = self.spectra()
+            check_finite(C_post, "concentrations")
+            check_finite(ST_post, "spectra")
             dCmax = (C_post - C_pre).abs().max()
             dSTmax = (ST_post - ST_pre).abs().max()
             lr = optimizer.param_groups[0]["lr"]
@@ -288,12 +316,14 @@ class DifferentiableMCR(nn.Module):
         C = self.concentrations()
         ST = self.spectra()
         loss = self.total_loss(C, ST, D, constraints)
+        check_finite(loss, "final loss")
         loss.backward()
         gmax = max([
             param.grad.abs().max()
             for group in optimizer.param_groups
             for param in group["params"]
         ])
+        check_finite(gmax, "final gradient")
         recon_mse = self.reconstruction_mse(C, ST, D)
         recon_mae = self.reconstruction_mae(C, ST, D)
         print(f"Final Epoch {epoch}")
